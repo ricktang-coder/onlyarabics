@@ -1,0 +1,390 @@
+/* Custom Styles for Arabic Vocab Immersive App (BuBeiDanCi style) */
+:root {
+  --font-arabic: 'Amiri', 'Noto Naskh Arabic', 'Traditional Arabic', 'Simplified Arabic', 'Arabic Typesetting', serif;
+  --font-arabic-sans: 'Noto Naskh Arabic', 'Segoe UI', -apple-system, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F7F5F0;
+  color: #292524;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Minimalist Monochrome Themes */
+.theme-cream {
+  background: #FAF8F5;
+}
+.theme-sage {
+  background: #E8EFE8;
+}
+.theme-slate {
+  background: #EAEDF1;
+}
+.theme-terracotta {
+  background: #F7ECE9;
+}
+.theme-matcha {
+  background: #EDF1E7;
+}
+.theme-sand {
+  background: #F4EFE6;
+}
+.theme-lavender {
+  background: #F2EEF6;
+}
+
+/* Frosted Glass / Glassmorphism */
+.glass-widget {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.09), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* Arabic typography utilities */
+.font-arabic {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: right;
+  line-height: 1.8;
+}
+
+.font-arabic-center {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: center;
+  line-height: 1.8;
+}
+
+.font-arabic-sans {
+  font-family: var(--font-arabic-sans);
+  direction: rtl;
+}
+
+/* Compact meta chips — one scale for level / syllabus / key / POS / status */
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  height: 1.25rem;
+  padding: 0 0.45rem;
+  border: 0;
+  border-radius: 9999px;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.meta-chip > svg {
+  width: 0.625rem;
+  height: 0.625rem;
+  flex: none;
+}
+
+.meta-chip--green { background: #ECFDF5; color: #047857; }
+.meta-chip--teal  { background: #F0FDFA; color: #0F766E; }
+.meta-chip--amber { background: #FFFBEB; color: #B45309; }
+.meta-chip--blue  { background: #EFF6FF; color: #1D4ED8; }
+.meta-chip--rose  { background: #FFF1F2; color: #BE123C; }
+.meta-chip--stone { background: #F5F2EB; color: #57534E; }
+.meta-chip--sky   { background: #F0F9FF; color: #0369A1; }
+.meta-chip--violet { background: #F5F3FF; color: #6D28D9; }
+
+/* Root hint in the word-list meta row: Arabic letters need the Arabic face,
+   not the monospace face used previously. */
+.meta-root {
+  font-family: var(--font-arabic-sans);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: #A8A29E;
+}
+
+/* Compact lexical cards used by the noun study view.  Keep long Arabic
+   forms readable without forcing the page wider on small screens. */
+#nounDerivativesList,
+#modalNounDerivativesList {
+  min-width: 0;
+}
+
+#nounDerivativesList button,
+#modalNounDerivativesList button {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  #nounLexiconSection,
+  #modalNounLexiconSection {
+    padding: 0.75rem;
+  }
+  #nounDerivativesList,
+  #modalNounDerivativesList {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Target Word Highlight in Sentence */
+.ar-highlight {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.2);
+  color: #92400E;
+  padding: 0 0.35rem;
+  border-radius: 0.375rem;
+  font-weight: 700;
+  border-bottom: 2px solid #F59E0B;
+  transition: all 0.2s ease;
+}
+
+/* Smooth Accordion and Fade Animations */
+.slide-down-enter {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease, transform 0.3s ease;
+}
+
+.slide-down-show {
+  max-height: 1600px;
+  opacity: 1;
+  transform: translateY(0);
+  overflow: visible;
+}
+
+/* Audio Pulse Animation */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.audio-playing {
+  animation: pulse-ring 1.5s infinite cubic-bezier(0.24, 0, 0.38, 1);
+}
+
+/* Card flip / transition */
+.card-transition {
+  transition: all 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Shake Animation on Wrong Answer */
+@keyframes shake-wrong {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.shake-wrong {
+  animation: shake-wrong 0.4s ease-in-out;
+}
+
+/* Success Pop Animation */
+@keyframes success-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.success-pop {
+  animation: success-pop 0.35s ease-out;
+}
+
+/* Checkin Pop Animation */
+@keyframes checkin-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+.checkin-animated {
+  animation: checkin-pop 0.45s ease-out;
+}
+
+/* Letter Bubble Tile Keyboard */
+.letter-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  direction: rtl;
+}
+
+.letter-tile {
+  font-family: var(--font-arabic);
+  font-size: 1.25rem;
+  line-height: 1;
+  width: 2.1rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  border: 1px solid #E7E2D6;
+  border-radius: 0.625rem;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+  color: #1C1917;
+  padding: 0;
+}
+
+@media (min-width: 640px) {
+  .letter-tile {
+    width: 2.35rem;
+    height: 2.6rem;
+    font-size: 1.35rem;
+  }
+}
+
+.letter-tile:hover {
+  background: #FEF3C7;
+  border-color: #F59E0B;
+  color: #78350F;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(245, 158, 11, 0.18);
+}
+
+.letter-tile:active {
+  transform: scale(0.92);
+  background: #FDE68A;
+}
+
+.letter-tile-special {
+  background: #F5F2EB;
+  color: #44403C;
+}
+
+.letter-tile-space {
+  width: 4.5rem;
+  font-size: 0.85rem;
+  font-family: sans-serif;
+  color: #78716C;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D1D5DB;
+}
+
+/* ==================== Legal documents (terms / privacy modal) ==================== */
+.legal-doc {
+  color: #44403c;
+  font-size: 0.875rem;
+  line-height: 1.75;
+}
+.legal-doc h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1c1917;
+  margin: 0 0 0.75rem;
+}
+.legal-doc h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1c1917;
+  margin: 1.5rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f5f5f4;
+}
+.legal-doc h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.legal-doc p {
+  margin: 0.5rem 0;
+}
+.legal-doc strong {
+  color: #1c1917;
+  font-weight: 700;
+}
+.legal-doc ul,
+.legal-doc ol {
+  margin: 0.5rem 0 0.5rem 1.25rem;
+  padding-left: 0.75rem;
+  list-style: disc;
+}
+.legal-doc ol {
+  list-style: decimal;
+}
+.legal-doc li {
+  margin: 0.25rem 0;
+}
+.legal-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.8rem;
+}
+.legal-doc th,
+.legal-doc td {
+  border: 1px solid #e7e5e4;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+.legal-doc th {
+  background: #fafaf9;
+  font-weight: 700;
+  color: #292524;
+}
+.legal-doc a {
+  color: #b45309;
+  text-decoration: underline;
+}
+
+/* Registration consent checkbox error state */
+.legal-agree--error {
+  background: #fff1f2;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+  animation: legalShake 0.3s ease-in-out;
+}
+@keyframes legalShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}

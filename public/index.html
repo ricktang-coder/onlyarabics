@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OnlyArabics · 只有阿语</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <meta name="theme-color" content="#F8F4EC">
+    <script>
+        // Avoid "不安全" in the address bar: upgrade plain HTTP to HTTPS immediately.
+        if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+            location.replace('https://' + location.host + location.pathname + location.search + location.hash);
+        }
+    </script>
+    <!-- Self-hosted Tailwind (built by `npm run css:build`) -->
+    <link rel="stylesheet" href="/css/tailwind.css?v=1.0.0">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/css/style.css?v=5.9.0">
+</head>
+<body class="theme-cream text-stone-800 min-h-screen flex flex-col justify-between selection:bg-amber-100 selection:text-amber-900">
+
+    <!-- ==================== 0. 全屏高斯模糊认证遮罩 (Login / Email Register / Reset Overlay) ==================== -->
+    <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-md transition-all duration-300 overflow-y-auto">
+        <div class="w-full max-w-sm bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-7 shadow-2xl border border-stone-200/80 flex flex-col animate-scale-in my-auto">
+            <!-- Logo & Title -->
+            <div class="text-center mb-5 flex flex-col items-center justify-center">
+                <div class="inline-flex w-13 h-13 rounded-2xl overflow-hidden shadow-sm mb-2.5">
+                    <img src="/images/logo.svg" alt="OnlyArabics" class="w-full h-full">
+                </div>
+                <h2 class="text-2xl font-extrabold text-stone-900 tracking-tight text-center">OnlyArabics</h2>
+                <p class="text-sm text-stone-500 mt-0.5 font-semibold tracking-wide text-center">只有阿语 · 纯净背单词</p>
+                <p class="text-base sm:text-lg text-stone-700 mt-1.5 font-bold font-arabic tracking-normal text-center leading-relaxed" dir="rtl">اطلبوا العلم ولو بالصين</p>
+            </div>
+
+            <!-- 登录 / 注册 切换栏 (找回密码时隐藏) -->
+            <div id="authModeTabs" class="grid grid-cols-2 gap-1.5 p-1 mb-4 rounded-2xl bg-stone-100 border border-stone-200/70">
+                <button id="tabAuthLogin" type="button" onclick="switchAuthMode('login')"
+                    class="py-2 rounded-xl text-xs font-bold transition cursor-pointer bg-white text-stone-900 shadow-xs">
+                    账号登录
+                </button>
+                <button id="tabAuthRegister" type="button" onclick="switchAuthMode('register')"
+                    class="py-2 rounded-xl text-xs font-bold transition cursor-pointer text-stone-500 hover:text-stone-800">
+                    邮箱注册
+                </button>
+            </div>
+
+            <!-- 找回密码页顶栏 (默认隐藏) -->
+            <div id="authResetHeader" class="hidden items-center justify-between mb-3 pb-2 border-b border-stone-100">
+                <button type="button" onclick="switchAuthMode('login')" class="text-xs font-semibold text-stone-500 hover:text-stone-900 flex items-center gap-1 cursor-pointer transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span>返回密码登录</span>
+                </button>
+                <span class="text-xs font-bold text-amber-800">找回登录密码</span>
+            </div>
+
+            <!-- 提示消息条 (错误 / 成功复用，默认隐藏) -->
+            <div id="loginErrorAlert" class="hidden mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2">
+                <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="loginErrorMsg" class="leading-relaxed">用户名或密码错误</span>
+            </div>
+
+            <!-- 1. 账号登录表单 -->
+            <form id="loginForm" class="flex flex-col gap-3.5" onsubmit="event.preventDefault(); handleLogin(); return false;">
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">注册邮箱 / 用户名</label>
+                    <div class="relative">
+                        <input id="loginUsername" type="text" placeholder="请输入注册邮箱或用户名" required autocomplete="username"
+                            class="w-full pl-9 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <svg class="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-stone-700">登录密码</label>
+                        <button type="button" onclick="switchAuthMode('reset')" class="text-xs font-semibold text-amber-700 hover:text-amber-900 cursor-pointer transition">
+                            忘记密码？
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input id="loginPassword" type="password" placeholder="请输入密码" required autocomplete="current-password"
+                            class="w-full pl-9 pr-10 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <svg class="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" class="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5" title="显示/隐藏密码">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btnLoginSubmit" type="submit"
+                    class="mt-1.5 w-full py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm transition active:scale-98 shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                    <span>登 录</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </form>
+
+            <!-- 2. 邮箱验证码注册表单 (默认隐藏) -->
+            <form id="registerForm" class="hidden flex-col gap-3" onsubmit="event.preventDefault(); handleRegister(); return false;">
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">常用邮箱</label>
+                    <div class="relative">
+                        <input id="registerEmail" type="email" placeholder="如 name@qq.com / 163 / Gmail" required autocomplete="email"
+                            class="w-full pl-9 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <svg class="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">邮箱验证码</label>
+                    <div class="flex items-center gap-2">
+                        <input id="registerCode" type="text" inputmode="numeric" maxlength="6" placeholder="6位数字验证码" required autocomplete="one-time-code"
+                            class="flex-1 px-3.5 py-2.5 text-sm font-mono tracking-widest bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <button id="btnSendRegisterCode" type="button" onclick="handleSendVerificationCode('register')"
+                            class="shrink-0 px-3.5 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs border border-amber-300/70 transition cursor-pointer whitespace-nowrap">
+                            获取验证码
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">设置密码</label>
+                    <div class="relative">
+                        <input id="registerPassword" type="password" minlength="6" placeholder="请设置登录密码（至少 6 位）" required autocomplete="new-password"
+                            class="w-full pl-9 pr-10 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <svg class="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        <button type="button" onclick="togglePasswordVisibility('registerPassword', this)" class="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5" title="显示/隐藏密码">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">个人昵称</label>
+                    <input id="registerUsername" type="text" maxlength="24" placeholder="选填，如：阿语学习者" autocomplete="nickname"
+                        class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                </div>
+
+                <label id="registerAgreeLabel" class="flex items-start gap-2 p-2.5 rounded-xl border border-stone-200 bg-stone-50/60 text-xs text-stone-600 leading-relaxed cursor-pointer transition">
+                    <input id="registerAgree" type="checkbox" class="mt-0.5 w-4 h-4 accent-amber-600 shrink-0 cursor-pointer">
+                    <span>我已年满 14 周岁，已阅读并同意
+                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLegalModal('terms')" class="text-amber-700 font-bold hover:underline cursor-pointer">《用户服务协议》</button>与
+                        <button type="button" onclick="event.preventDefault(); event.stopPropagation(); openLegalModal('privacy')" class="text-amber-700 font-bold hover:underline cursor-pointer">《隐私政策》</button>
+                    </span>
+                </label>
+
+                <button id="btnRegisterSubmit" type="submit" disabled
+                    class="mt-1.5 w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm transition active:scale-98 shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                    <span>注册并建立独立词库档案</span>
+                </button>
+            </form>
+
+            <!-- 3. 找回/重置密码表单 (默认隐藏) -->
+            <form id="resetPasswordForm" class="hidden flex-col gap-3" onsubmit="event.preventDefault(); handleResetPassword(); return false;">
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">已注册邮箱</label>
+                    <input id="resetEmail" type="email" placeholder="请输入注册时使用的邮箱" required autocomplete="email"
+                        class="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">邮箱验证码</label>
+                    <div class="flex items-center gap-2">
+                        <input id="resetCode" type="text" inputmode="numeric" maxlength="6" placeholder="6位验证码" required autocomplete="one-time-code"
+                            class="flex-1 px-3.5 py-2.5 text-sm font-mono tracking-widest bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <button id="btnSendResetCode" type="button" onclick="handleSendVerificationCode('reset_password')"
+                            class="shrink-0 px-3.5 py-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs border border-amber-300/70 transition cursor-pointer whitespace-nowrap">
+                            获取验证码
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-700 mb-1.5">设置新密码</label>
+                    <div class="relative">
+                        <input id="resetNewPassword" type="password" minlength="6" placeholder="请输入新密码（至少 6 位）" required autocomplete="new-password"
+                            class="w-full px-3.5 pr-10 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 focus:bg-white transition">
+                        <button type="button" onclick="togglePasswordVisibility('resetNewPassword', this)" class="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5" title="显示/隐藏密码">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btnResetSubmit" type="submit"
+                    class="mt-1.5 w-full py-3 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm transition active:scale-98 shadow-md flex items-center justify-center gap-2 cursor-pointer">
+                    <span>确认重置密码</span>
+                </button>
+            </form>
+
+            <p class="mt-4 pt-3 border-t border-stone-100 text-center text-xs text-stone-400 leading-relaxed">
+                页面打不开或加载异常？可尝试备用入口
+                <a href="https://arabic-vocab-app.kalima.workers.dev" target="_blank" rel="noopener"
+                   class="text-amber-700 font-semibold hover:underline">workers.dev</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- ==================== VIEW 1: HOME DASHBOARD ==================== -->
+    <div id="dashboardView" class="min-h-screen flex flex-col justify-between relative overflow-hidden">
+        
+        <!-- Top Status & User Bar -->
+        <header class="w-full max-w-md mx-auto px-5 pt-5 flex items-center justify-between z-10">
+            <!-- User Avatar & Streak Badge -->
+            <div class="flex items-center gap-2.5">
+                <div class="relative group cursor-pointer" id="btnOpenSettingsAvatar" title="账户与头像设置">
+                    <div class="w-12 h-12 rounded-full bg-amber-100/90 border-2 border-white shadow-md flex items-center justify-center overflow-hidden backdrop-blur-sm">
+                        <img id="headerAvatarImg" src="/images/avatar-default.svg" alt="用户头像" class="w-full h-full object-cover object-center">
+                    </div>
+                    <span id="streakBadge" class="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[1.2rem] h-[1.2rem] rounded-full bg-rose-500 text-white text-2xs font-bold flex items-center justify-center shadow-xs border-2 border-white">
+                        <span id="streakCountText">1</span>
+                    </span>
+                </div>
+                <div class="flex flex-col min-w-0">
+                    <span class="font-bold text-sm text-stone-900 leading-tight tracking-tight">OnlyArabics</span>
+                    <span id="headerUsernameText" class="text-2xs text-stone-500 font-medium truncate max-w-[140px]">未登录</span>
+                </div>
+            </div>
+
+            <!-- Palette & Theme Switcher -->
+            <div class="flex items-center gap-2">
+                <button id="btnSwitchTheme" class="px-3 py-1 rounded-full bg-white/70 hover:bg-white text-stone-700 text-xs font-semibold backdrop-blur-md shadow-2xs border border-white/60 flex items-center gap-1.5 transition active:scale-95" title="切换莫兰迪与纯色纸质主题">
+                    <span>🎨</span>
+                    <span id="themeNameBadge" class="text-2xs font-medium text-stone-500">奶油白纸</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Center Check-in Widget (签到卡片) -->
+        <main class="w-full max-w-md mx-auto px-5 flex flex-col items-center justify-center my-auto z-10">
+            <div id="checkinWidget" class="glass-widget rounded-3xl p-6 text-center cursor-pointer hover:scale-105 transition duration-200 active:scale-95 w-48 shadow-xl flex flex-col items-center select-none" title="点击打卡签到">
+                <div class="w-10 h-10 rounded-2xl bg-stone-900/5 text-stone-800 flex items-center justify-center mb-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                </div>
+                <h3 id="checkinTitle" class="text-base font-bold text-stone-900 tracking-tight">签到</h3>
+                <span id="checkinDateText" class="text-xs text-stone-500 font-medium mt-0.5">08/24 Mon.</span>
+            </div>
+        </main>
+
+        <!-- Bottom Actions & Navigation -->
+        <footer class="w-full max-w-md mx-auto px-5 pb-6 flex flex-col gap-4 z-10">
+            <!-- Dual Core Action Cards (Learn & Review) -->
+            <div class="grid grid-cols-2 gap-3.5">
+                <!-- Learn Card (学新词) -->
+                <div class="glass-card rounded-3xl p-5 text-left transition flex flex-col justify-between group shadow-lg relative">
+                    <div class="flex items-center justify-between w-full mb-1">
+                        <span class="text-base sm:text-lg font-bold text-stone-900 tracking-tight">Learn</span>
+                        <!-- Quick Daily Goal Setting Button -->
+                        <button id="btnDailyGoalTrigger" class="w-7 h-7 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 flex items-center justify-center transition active:scale-90 cursor-pointer shadow-2xs shrink-0" title="设置每日学习量">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
+                    </div>
+                    <button id="btnCardLearn" class="w-full text-left cursor-pointer active:scale-98 transition flex flex-col items-start mt-1">
+                        <div class="flex items-baseline gap-1">
+                            <span id="learnCountBadge" class="text-2xl sm:text-3xl font-extrabold text-amber-600 font-mono">20</span>
+                            <span id="learnSubtext" class="text-2xs text-stone-400">词今日计划</span>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Review Card (复习) -->
+                <div class="glass-card rounded-3xl p-5 text-left transition hover:scale-102 flex flex-col justify-between group shadow-lg relative">
+                    <div class="flex items-center justify-between w-full mb-1">
+                        <span class="text-base sm:text-lg font-bold text-stone-900 tracking-tight">Review</span>
+                        <!-- Quick Review Goal Setting Button -->
+                        <button id="btnOpenReviewGoalModal" class="w-7 h-7 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-800 flex items-center justify-center transition active:scale-90 cursor-pointer shadow-2xs shrink-0" title="设置每次复习量">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        </button>
+                    </div>
+                    <button id="btnCardReview" class="w-full text-left cursor-pointer active:scale-98 transition flex flex-col items-start mt-1">
+                        <div class="flex items-baseline gap-1">
+                            <span id="reviewCountBadge" class="text-2xl sm:text-3xl font-extrabold text-blue-600 font-mono">20</span>
+                            <span class="text-2xs text-stone-400">词复习计划</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <nav class="glass-widget rounded-2xl px-6 py-3 flex items-center justify-between text-stone-700 shadow-md">
+                <!-- Left Nav Icon: 难度等级划分与选择 (图二红圈图标) -->
+                <button id="tabLevel" class="p-2 text-stone-600 hover:text-stone-950 transition flex flex-col items-center active:scale-95 cursor-pointer" title="难度等级划分与选择">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                </button>
+
+                <!-- Middle Nav Icon: 词库总览与搜索 -->
+                <button id="tabLibrary" class="p-2 text-stone-500 hover:text-stone-900 transition flex flex-col items-center active:scale-95 cursor-pointer" title="词库总览与搜索">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 4.5h6a1.5 1.5 0 0 1 1.5 1.5v1H7.5v-1A1.5 1.5 0 0 1 9 4.5z" />
+                        <path d="M6 10h12a1.8 1.8 0 0 1 1.8 1.8V13H4.2v-1.2A1.8 1.8 0 0 1 6 10z" />
+                        <rect x="3" y="15" width="18" height="6" rx="2.5" />
+                    </svg>
+                </button>
+
+                <!-- Right Nav Icon: 设置与统计 -->
+                <button id="tabSettings" class="p-2 text-stone-500 hover:text-stone-900 transition flex flex-col items-center active:scale-95 cursor-pointer" title="设置与统计">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                </button>
+            </nav>
+        </footer>
+    </div>
+
+
+    <!-- ==================== VIEW 2: MULTI-MODAL FLASHCARD & QUIZ WORKSPACE ==================== -->
+    <div id="flashcardView" class="hidden min-h-screen flex flex-col justify-between bg-stone-50">
+        
+        <!-- Top Header & 4-Streak Indicator -->
+        <header class="w-full max-w-2xl mx-auto px-4 pt-4 pb-2">
+            <div class="flex items-center justify-between">
+                <!-- Back Button -->
+                <button id="btnBackToDashboard" class="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-100 text-stone-700 transition shadow-2xs text-xs font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <span>返回</span>
+                </button>
+
+                <!-- Tashkeel Toggle -->
+                <div class="flex items-center gap-2">
+                    <button id="tashkeelToggleBtn" class="p-1.5 px-2.5 rounded-xl bg-white border border-stone-200 hover:bg-stone-100 text-stone-700 transition shadow-2xs flex items-center gap-1 text-xs font-medium cursor-pointer" title="切换标音">
+                        <span class="text-stone-400">音</span>
+                        <span id="tashkeelStatusBadge" class="px-1 py-0.2 text-2xs rounded bg-emerald-100 text-emerald-700 font-semibold">开</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Session & 4-Streak Progress Info -->
+            <div class="mt-3 flex items-center justify-between gap-3 text-xs text-stone-500 font-medium">
+                <!-- Session completed words count -->
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span id="sessionProgressLabel">已掌握: 0 / 15 词</span>
+                </span>
+                
+                <!-- 4 Consecutive Correct Indicator (4连对进度指示) -->
+                <div class="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-full border border-stone-200 shadow-2xs">
+                    <span class="text-2xs text-stone-400 font-semibold">4连对:</span>
+                    <div id="streakDotsContainer" class="flex items-center gap-1 text-stone-300 text-xs">
+                        <span class="streak-dot text-stone-300">○</span>
+                        <span class="streak-dot text-stone-300">○</span>
+                        <span class="streak-dot text-stone-300">○</span>
+                        <span class="streak-dot text-stone-300">○</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-full bg-stone-200/80 rounded-full h-1.5 mt-2 overflow-hidden">
+                <div id="sessionProgressBar" class="bg-stone-800 h-1.5 rounded-full transition-all duration-300 ease-out" style="width: 0%;"></div>
+            </div>
+        </header>
+
+        <!-- Main Challenge Box -->
+        <main class="flex-1 w-full max-w-2xl mx-auto px-4 py-2 flex flex-col justify-center">
+            <div id="wordCard" class="card-transition w-full bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xl shadow-stone-200/40 relative flex flex-col">
+                
+                <!-- Card Header: Mode & Mastered Button -->
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <span id="cardCategoryText" class="text-xs text-stone-500 font-medium truncate">两段自测 · 连对 0/4</span>
+                    <button id="btnMarkMastered" class="px-3 py-1 rounded-full bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 transition text-xs font-semibold flex items-center gap-1 border border-stone-200/80 shrink-0 whitespace-nowrap active:scale-95 cursor-pointer shadow-2xs" title="标记为已熟记">
+                        <svg class="w-3.5 h-3.5 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                        <span>已熟记</span>
+                    </button>
+                </div>
+
+                <!-- ================= MODE CONTAINER 1: TWO-STEP FLASHCARD ================= -->
+                <div id="flashcardModeContainer" class="flex flex-col items-center justify-center text-center pt-2">
+                    <h2 id="headwordArabic" class="text-5xl sm:text-6xl font-serif text-stone-900 font-arabic-center tracking-wide cursor-pointer transition-transform hover:scale-105 active:scale-95 select-none my-3" title="轻触切换标音">
+                        كَتَبَ
+                    </h2>
+                    
+                    <button id="audioWordBtn" class="px-4 py-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition flex items-center gap-1.5 shadow-2xs mt-2 active:scale-95 cursor-pointer border border-stone-200/60" title="发音">
+                        <svg class="w-4 h-4 text-stone-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                        <span>标准发音</span>
+                    </button>
+
+                    <div id="contextSentenceBox" class="w-full mt-5 p-4 rounded-2xl bg-stone-50/90 border border-stone-200/80 text-right relative shadow-2xs">
+                        <div class="flex items-center justify-between mb-2 gap-2">
+                            <div class="flex items-center gap-1.5">
+                                <button id="audioSentenceBtn" class="px-2 py-1 rounded-lg bg-white border border-stone-200 hover:bg-stone-100 text-stone-600 transition flex items-center gap-1 text-2xs font-medium cursor-pointer shadow-2xs" title="朗读例句">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                                    <span>朗读</span>
+                                </button>
+                                <button id="btnToggleSimpleZh" class="hidden px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition text-xs font-medium cursor-pointer shadow-2xs">看中文</button>
+                            </div>
+                            <span id="contextExampleLabel" class="text-xs font-bold text-stone-500">语境例句</span>
+                        </div>
+                        <p id="exampleArText" class="text-xl sm:text-2xl font-serif text-stone-900 font-arabic leading-loose tracking-wide pt-1" dir="rtl">
+                            كَتَبَ الْكَاتِبُ رِوَايَةً رَائِعَةً عَنِ التَّارِيخِ الْعَرَبِيِّ.
+                        </p>
+                        <p id="exampleSimpleZhText" class="hidden mt-2 text-xs text-stone-600 leading-relaxed text-left"></p>
+                    </div>
+                </div>
+
+                <!-- ================= MODE CONTAINER 2: ARABIC TO CHINESE CHOICE ================= -->
+                <div id="arToZhModeContainer" class="hidden flex flex-col items-center text-center pt-2">
+                    <div class="flex items-center gap-3">
+                        <h2 id="arToZhHeadword" class="text-4xl sm:text-5xl font-serif text-stone-900 font-arabic my-1">
+                            كَتَبَ
+                        </h2>
+                        <button id="audioArToZhBtn" class="p-2 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-600 transition">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                        </button>
+                    </div>
+                    <p class="text-xs text-stone-400 mt-1 mb-4">请选择正确的中文释义：</p>
+                    
+                    <!-- 4 Options Grid -->
+                    <div id="arToZhOptionsList" class="w-full grid grid-cols-1 gap-2.5">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- ================= MODE CONTAINER 3: CHINESE TO ARABIC CHOICE ================= -->
+                <div id="zhToArModeContainer" class="hidden flex flex-col items-center text-center pt-2">
+                    <div class="flex flex-col items-center gap-1 mb-4">
+                        <h3 id="zhToArMeaningText" class="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
+                            书写；著述
+                        </h3>
+                    </div>
+                    <p class="text-xs text-stone-400 mb-4">请选择对应的阿拉伯语单词：</p>
+                    
+                    <div id="zhToArOptionsList" class="w-full grid grid-cols-2 gap-2.5">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- ================= MODE CONTAINER 4: ARABIC SPELLING ================= -->
+                <div id="spellingModeContainer" class="hidden flex flex-col items-center text-center pt-2">
+                    <div class="flex flex-col items-center gap-1 mb-3">
+                        <h3 id="spellingMeaningText" class="text-xl sm:text-2xl font-bold text-stone-900">
+                            书写；著述
+                        </h3>
+                    </div>
+
+                    <!-- Sentence with cloze blank -->
+                    <div id="spellingSentenceBox" class="w-full p-3 rounded-2xl bg-stone-50 border border-stone-200/70 text-right mb-3">
+                        <p id="spellingSentenceText" class="text-base sm:text-lg font-serif text-stone-800 font-arabic">
+                            ______ الْكَاتِبُ رِوَايَةً رَائِعَةً.
+                        </p>
+                    </div>
+
+                    <!-- Answer Input / Assembly Display -->
+                    <div class="w-full flex items-center justify-between gap-2 p-2.5 bg-stone-100/90 rounded-2xl border-2 border-stone-300 focus-within:border-amber-500 mb-2.5 shadow-inner">
+                        <input id="spellingInput" type="text" placeholder="点击下方阿语字母或键盘输入..." class="w-full bg-transparent text-2xl sm:text-3xl font-serif text-stone-900 font-arabic text-right outline-none px-2">
+                        <div class="flex items-center gap-1">
+                            <button id="btnSpellingClear" class="px-2 py-1.5 rounded-xl bg-white hover:bg-stone-200 text-stone-500 text-xs font-medium shadow-2xs transition" title="清空">
+                                清空
+                            </button>
+                            <button id="btnSpellingBackspace" class="p-2 rounded-xl bg-white hover:bg-stone-200 text-stone-600 shadow-2xs transition" title="退格删除">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="spellingDiffHint" class="hidden w-full text-xs text-rose-700 bg-rose-50/90 border border-rose-200 rounded-xl px-3 py-2 mb-2.5 flex items-center justify-between gap-2"></div>
+
+                    <!-- Full Arabic Alphabet Keyboard Pad -->
+                    <div class="w-full bg-stone-50/80 p-2.5 rounded-2xl border border-stone-200/80">
+                        <div class="flex items-center justify-between text-2xs text-stone-400 mb-2 px-1">
+                            <span>全套阿拉伯语字母表：</span>
+                            <span class="text-stone-400">轻触字母发音并上屏</span>
+                        </div>
+                        <div id="letterTilesBank" class="flex flex-col items-center gap-1.5 w-full">
+                            <!-- Rows of all 28 Arabic letters + variants injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Submit Spelling Button -->
+                    <button id="btnSubmitSpelling" class="w-full mt-3 py-3.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-sm transition shadow-md flex items-center justify-center gap-2">
+                        <span>确认提交</span>
+                    </button>
+                </div>
+
+                <!-- ================= STEP 2: EXPANDABLE DETAILS SECTION ================= -->
+                <div id="detailsSection" class="slide-down-enter border-t border-stone-100 pt-4 mt-3 flex flex-col gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="posTag" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-800 text-stone-100">名词</span>
+                        </div>
+                        <h3 id="meaningZhText" class="text-xl sm:text-2xl font-bold text-stone-900">书写；著述；规定</h3>
+                    </div>
+
+                    <!-- Noun/verb properties -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <!-- Plural Box -->
+                        <div id="pluralBox" class="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 to-amber-100/40 border border-amber-200/80 shadow-2xs flex flex-col justify-between hidden min-h-[92px]">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-1.5 text-amber-800">
+                                    <svg class="w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                    <span class="text-2xs font-bold tracking-wide">复数形态 (جمع)</span>
+                                </div>
+                                <span class="text-2xs px-2 py-0.5 rounded-full bg-stone-200/60 text-stone-700 font-medium">名词形态</span>
+                            </div>
+                            <div class="flex items-center justify-between mt-auto">
+                                <span class="text-2xs text-stone-400">词汇复数</span>
+                                <span id="pluralText" class="text-2xl sm:text-3xl font-serif font-bold text-stone-900 font-arabic text-right tracking-wide">أَحْزَابٌ</span>
+                            </div>
+                        </div>
+
+                        <!-- Collocation Box (For Verbs with verified prepositions) -->
+                        <div id="collocationBox" class="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 via-blue-50/70 to-indigo-50/60 border border-blue-200/90 shadow-2xs flex flex-col justify-between hidden min-h-[92px] col-span-1 sm:col-span-2 cursor-pointer hover:border-blue-300 transition" title="点击朗读搭配">
+                            <div class="flex items-center justify-between mb-1">
+                                <div class="flex items-center gap-1.5 text-blue-900">
+                                    <svg class="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                                    <span class="text-2xs font-bold tracking-wide">动介固定搭配 (فعل + حرف جر)</span>
+                                </div>
+                                <span class="text-2xs px-2 py-0.5 rounded-full bg-blue-200/70 text-blue-900 font-semibold">🔊 点击发音</span>
+                            </div>
+                            <div class="flex items-center justify-between mt-auto">
+                                <span class="text-2xs text-blue-800/60">经典辞书搭配与语义</span>
+                                <span id="collocationText" class="text-base sm:text-lg font-bold font-serif text-blue-950 font-arabic text-right leading-relaxed">افْتَتَحَ بِـ (以...开场/揭幕)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Noun lexicon: root, synonyms and verified root derivatives -->
+                    <section id="nounLexiconSection" class="hidden flex flex-col gap-3 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-stone-50 border border-amber-200/70 shadow-2xs">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold shrink-0">ج</span>
+                                <div class="min-w-0"><div class="text-xs font-bold text-stone-800">字母根</div><div class="text-2xs text-stone-400">الجذر · 构词核心</div></div>
+                            </div>
+                            <span id="nounRootText" class="font-arabic text-lg font-bold text-amber-900 tracking-widest" dir="rtl">—</span>
+                        </div>
+                        <div class="pt-2 border-t border-amber-200/50">
+                            <div class="flex items-center justify-between gap-2 mb-1.5"><span class="text-xs font-bold text-stone-800">同根派生词</span><span class="text-2xs text-stone-400">点击查看词条 · 🔊 发音</span></div>
+                            <div id="nounDerivativesList" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5"></div>
+                        </div>
+                    </section>
+
+                    <!-- Real Contextual Arabic Example Sentence & Chinese Translation (Always present together in all modes!) -->
+                    <div class="p-4 rounded-2xl bg-stone-50/90 border border-stone-200/80 flex flex-col gap-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-stone-600 truncate">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                <span id="detailExampleLabel">语境例句与翻译</span>
+                            </div>
+                            <button id="btnDetailAudioSentence" class="px-2.5 py-1 rounded-xl bg-white border border-stone-200 hover:bg-stone-100 text-stone-700 text-xs font-semibold transition flex items-center gap-1 shadow-2xs shrink-0 whitespace-nowrap active:scale-95 cursor-pointer" title="朗读例句">
+                                <svg class="w-3.5 h-3.5 text-stone-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                                <span>朗读</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Primary example: simple phrase for beginners, original otherwise -->
+                        <p id="detailExampleArText" class="text-xl sm:text-2xl font-serif text-stone-900 font-arabic text-right leading-loose tracking-wide pt-1" dir="rtl">
+                            الْتَقَى السَّفِيرُ الْجَدِيدُ بِوَزِيرِ الْخَارِجِيَّةِ لِتَقْدِيمِ أَوْرَاقِ اعْتِمَادِهِ.
+                        </p>
+
+                        <!-- Chinese Sentence Translation -->
+                        <div class="pt-2.5 border-t border-stone-200/60 flex items-start gap-1.5 text-xs text-stone-600">
+                            <span class="text-stone-400 font-semibold whitespace-nowrap">例句译文：</span>
+                            <p id="detailExampleZhText" class="text-stone-800 leading-relaxed font-medium">新任大使会见了外交部长以递交国书。</p>
+                        </div>
+
+                        <!-- Original example, collapsed when the simple version is primary -->
+                        <details id="detailOriginalExample" class="hidden mt-1 pt-2 border-t border-dashed border-stone-200/80">
+                            <summary class="cursor-pointer select-none text-xs font-semibold text-stone-400">查看原例句</summary>
+                            <p id="detailOriginalExampleAr" class="text-base sm:text-lg font-serif text-stone-800 font-arabic text-right leading-loose tracking-wide pt-2" dir="rtl"></p>
+                            <p id="detailOriginalExampleZh" class="text-xs text-stone-500 leading-relaxed mt-1"></p>
+                            <button id="btnDetailAudioOriginal" class="mt-2 px-2 py-1 rounded-lg bg-white border border-stone-200 hover:bg-stone-100 text-stone-500 transition text-xs font-medium cursor-pointer shadow-2xs" title="朗读原例句">朗读原句</button>
+                        </details>
+                    </div>
+
+                    <!-- Synonyms & Antonyms Section -->
+                    <div id="synonymsAntonymsSection" class="mt-3 flex flex-col gap-2 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 to-orange-50/40 border border-amber-200/70 shadow-2xs hidden">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-amber-900 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                                <span>近义词与反义词</span>
+                            </span>
+                            <span class="text-xs text-amber-700/60">轻触查看释义</span>
+                        </div>
+                        <div id="synonymsBox" dir="rtl" class="flex flex-wrap items-center gap-2 text-sm">
+                            <span class="px-2.5 py-1 rounded-lg bg-amber-100/90 text-amber-900 font-bold text-xs shrink-0">近义词</span>
+                            <div id="synonymsList" class="flex flex-wrap items-center gap-2 font-arabic font-bold text-stone-900"></div>
+                        </div>
+                        <div id="antonymsBox" dir="rtl" class="flex flex-wrap items-center gap-2 text-sm pt-2 border-t border-amber-200/50 hidden">
+                            <span class="px-2.5 py-1 rounded-lg bg-stone-200/90 text-stone-800 font-bold text-xs shrink-0">反义词</span>
+                            <div id="antonymsList" class="flex flex-wrap items-center gap-2 font-arabic font-bold text-stone-900"></div>
+                        </div>
+                    </div>
+
+                    <!-- Verb Tenses Summary Section (Visible for verbs) -->
+                    <div id="verbTensesSection" class="mt-3 p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200/70 hidden flex flex-col gap-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="text-xs font-bold text-emerald-950 whitespace-nowrap">动词核心时态</span>
+                                <span id="verbFormTag" class="text-3xs px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-medium whitespace-nowrap shrink-0">III 型</span>
+                            </div>
+                            <button id="btnOpenConjugationModal" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-2xs whitespace-nowrap transition flex items-center gap-0.5 cursor-pointer">
+                                <span>全人称变位</span>
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- 3-tense row -->
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div id="verbPastCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                                <span class="text-3xs text-stone-400 whitespace-nowrap">过去时 (الماضي)</span>
+                                <span id="verbPastText" class="text-sm font-bold font-arabic text-stone-900">بَادَرَ</span>
+                            </div>
+                            <div id="verbPresentCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                                <span class="text-3xs text-stone-400 whitespace-nowrap">现在时 (المضارع)</span>
+                                <span id="verbPresentText" class="text-sm font-bold font-arabic text-stone-900">يُبَادِرُ</span>
+                            </div>
+                            <div id="verbImperativeCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                                <span class="text-3xs text-stone-400 whitespace-nowrap">命令式 (الأمر)</span>
+                                <span id="verbImperativeText" class="text-sm font-bold font-arabic text-stone-900">بَادِرْ</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- Bottom Action Bar -->
+        <footer class="w-full max-w-2xl mx-auto px-4 pb-6 pt-2">
+            <!-- Step 1 Actions (Two-step mode only) -->
+            <div id="step1ActionBar" class="grid grid-cols-2 gap-4">
+                <button id="btnDontKnow" class="py-4 px-6 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-base transition duration-150 flex items-center justify-center border border-stone-200/80 active:scale-98 shadow-sm cursor-pointer">
+                    <span>不认识</span>
+                </button>
+                <button id="btnKnow" class="py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base transition duration-150 flex items-center justify-center active:scale-98 shadow-md shadow-emerald-600/20 cursor-pointer">
+                    <span>认识</span>
+                </button>
+            </div>
+
+            <!-- Step 2 Actions (Confirm and advance to next challenge) -->
+            <div id="step2ActionBar" class="hidden flex items-center gap-3">
+                <button id="btnNextChallenge" class="w-full py-4 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-base transition shadow-md flex items-center justify-center gap-2 active:scale-98 cursor-pointer">
+                    <span>下一题</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+
+    <!-- ==================== MODALS & DRAWERS ==================== -->
+
+    <!-- Session Completion Summary Modal -->
+    <div id="sessionModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 flex flex-col items-center text-center transform transition-all">
+            <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 shadow-inner">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            
+            <h3 class="text-2xl font-bold text-stone-900 tracking-tight">🎉 4连对自测完成！</h3>
+            <p class="text-xs text-stone-500 mt-1">本组所有单词均已达成连续4次正确回忆</p>
+
+            <div class="w-full grid grid-cols-3 gap-2 my-5 p-4 rounded-2xl bg-stone-50 border border-stone-200/80">
+                <div class="flex flex-col">
+                    <span id="sessionTotalWords" class="text-xl font-bold text-stone-900 font-mono">15</span>
+                    <span class="text-2xs text-stone-400 uppercase">完全掌握</span>
+                </div>
+                <div class="flex flex-col border-x border-stone-200">
+                    <span id="sessionMasteryRate" class="text-xl font-bold text-emerald-600 font-mono">96%</span>
+                    <span class="text-2xs text-stone-400 uppercase">自测准确率</span>
+                </div>
+                <div class="flex flex-col">
+                    <span id="sessionMistakeCount" class="text-xl font-bold text-amber-600 font-mono">0</span>
+                    <span class="text-2xs text-stone-400 uppercase">中途重试</span>
+                </div>
+            </div>
+
+            <div class="w-full flex flex-col gap-2.5">
+                <button id="btnNextSession" class="w-full py-3.5 px-4 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-semibold text-sm transition shadow-md">
+                    开启下一组自测
+                </button>
+                <button id="btnReturnHomeFromModal" class="w-full py-2.5 px-4 rounded-2xl hover:bg-stone-100 text-stone-600 font-medium text-xs transition">
+                    返回首页
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Word Library & Root Drawer -->
+    <div id="libraryDrawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-stone-50 shadow-2xl border-l border-stone-200 transform translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+        <div class="p-4 border-b border-stone-200 bg-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <h3 class="font-bold text-stone-900 text-base">词库总览</h3>
+                <span id="libraryStatsTotal" class="text-2xs text-stone-400">已熟记 0 · 加载中...</span>
+            </div>
+            <button id="btnCloseLibrary" class="p-2 rounded-xl hover:bg-stone-100 text-stone-500 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-4 bg-white border-b border-stone-200 flex flex-col gap-2">
+            <div class="relative">
+                <input id="librarySearchInput" type="text" placeholder="搜索阿语、中文释义或词根..." class="w-full pl-9 pr-4 py-2 text-sm bg-stone-100 border border-stone-200 rounded-xl focus:outline-none focus:border-stone-400 transition">
+                <svg class="w-4 h-4 text-stone-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <select id="libraryDifficultyFilter" class="w-full py-1.5 px-2 text-xs bg-stone-100 border border-stone-200 rounded-lg text-stone-700 focus:outline-none">
+                    <option value="all">全部难度与词表</option>
+                    <option value="beginner">🌱 初级 (A1-A2)</option>
+                    <option value="intermediate">🚀 中级 (B1-B2)</option>
+                    <option value="advanced">👑 高级 (C1-C2)</option>
+                    <option value="syllabus">🎓 教学大纲词汇 (全部)</option>
+                    <option value="syllabus:2">🎓 大纲二级</option>
+                    <option value="syllabus:4">🎓 大纲四级</option>
+                    <option value="syllabus:6">🎓 大纲六级</option>
+                    <option value="syllabus:8">🎓 大纲八级</option>
+                    <option value="syllabus:unmarked">🎓 大纲未定级</option>
+                    <option value="syllabus:key">⭐ 大纲重点复用词</option>
+                    <option value="tem4">🏆 专业四级词汇</option>
+                    <option value="tem4:key">⭐ 专四重点词汇</option>
+                    <option value="book1">📘 新编阿拉伯语第一册</option>
+                    <option value="book2">📙 新编阿拉伯语第二册</option>
+                </select>
+                <select id="libraryStatusFilter" class="w-full py-1.5 px-2 text-xs bg-stone-100 border border-stone-200 rounded-lg text-stone-700 focus:outline-none">
+                    <option value="all">全部学习状态</option>
+                    <option value="unlearned">未学新词</option>
+                    <option value="learning">复习中</option>
+                    <option value="mastered">已熟记</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="libraryWordList" class="flex-1 overflow-y-auto p-4 space-y-2.5"></div>
+    </div>
+
+    <!-- Difficulty Level Selection Modal (难度等级划分与选择弹窗) -->
+    <div id="levelSelectModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-900">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 4.5h6a1.5 1.5 0 0 1 1.5 1.5v1H7.5v-1A1.5 1.5 0 0 1 9 4.5z" />
+                            <path d="M6 10h12a1.8 1.8 0 0 1 1.8 1.8V13H4.2v-1.2A1.8 1.8 0 0 1 6 10z" />
+                            <rect x="3" y="15" width="18" height="6" rx="2.5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-stone-900 text-base leading-tight">词库难度等级选择</h3>
+                        <p class="text-2xs text-stone-400 font-medium mt-0.5">严格按照 CEFR 国际语言学与现代标准阿语语境分级</p>
+                    </div>
+                </div>
+                <button id="btnCloseLevelModal" class="p-1.5 rounded-xl hover:bg-stone-100 text-stone-400 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Dynamic Level Cards Container -->
+            <div id="levelCardsContainer" class="flex-1 overflow-y-auto py-3 space-y-3 pr-0.5">
+                <!-- Level cards rendered dynamically via JS -->
+            </div>
+
+            <!-- Bottom Notice -->
+            <div class="pt-3 border-t border-stone-100 flex items-center justify-between text-2xs text-stone-400">
+                <span>💡 切换等级后，新词学习计划将自动优先抽取该等级词汇</span>
+                <button id="btnBrowseLibraryDirect" class="text-amber-800 font-semibold hover:underline">浏览词库列表 &rarr;</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Daily Goal Picker Modal -->
+    <div id="dailyGoalModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎯</span>
+                    <h3 class="font-bold text-stone-900 text-base">设定每日学习词量</h3>
+                </div>
+                <button id="btnCloseDailyGoalModal" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <p class="text-xs text-stone-500 mt-3 mb-4">请选择您每天计划背诵的新词数量，系统将自动据此安排每日学习计划：</p>
+            
+            <div class="grid grid-cols-3 gap-2 mb-4" id="goalOptionsGrid">
+                <button class="goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-amber-50 hover:border-amber-400 text-stone-800 font-bold text-sm transition text-center" data-goal="10">
+                    10 词
+                </button>
+                <button class="goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-amber-50 hover:border-amber-400 text-stone-800 font-bold text-sm transition text-center" data-goal="15">
+                    15 词
+                </button>
+                <button class="goal-option-btn p-3 rounded-2xl border-2 border-amber-500 bg-amber-50 text-amber-900 font-bold text-sm transition text-center active-goal" data-goal="20">
+                    20 词
+                </button>
+                <button class="goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-amber-50 hover:border-amber-400 text-stone-800 font-bold text-sm transition text-center" data-goal="25">
+                    25 词
+                </button>
+                <button class="goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-amber-50 hover:border-amber-400 text-stone-800 font-bold text-sm transition text-center" data-goal="30">
+                    30 词
+                </button>
+                <button class="goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-amber-50 hover:border-amber-400 text-stone-800 font-bold text-sm transition text-center" data-goal="50">
+                    50 词
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+                <input id="customGoalInput" type="number" min="5" max="200" placeholder="或自定义词量 (如: 40)" class="flex-1 px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 font-mono">
+                <button id="btnSaveCustomGoal" class="px-4 py-2 rounded-xl bg-stone-900 text-white font-semibold text-xs hover:bg-stone-800 transition">
+                    确定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Review Goal Picker Modal (自定义复习抽词数量弹窗) -->
+    <div id="reviewGoalModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🔄</span>
+                    <h3 class="font-bold text-stone-900 text-base">自定义复习抽词数量</h3>
+                </div>
+                <button id="btnCloseReviewGoalModal" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <p class="text-xs text-stone-500 mt-3 mb-4">请选择每次从过去已学过的词库中抽选复习的单词数量：</p>
+            
+            <div class="grid grid-cols-3 gap-2 mb-4" id="reviewGoalOptionsGrid">
+                <button class="review-goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-blue-50 hover:border-blue-400 text-stone-800 font-bold text-sm transition text-center cursor-pointer" data-goal="10">
+                    10 词
+                </button>
+                <button class="review-goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-blue-50 hover:border-blue-400 text-stone-800 font-bold text-sm transition text-center cursor-pointer" data-goal="15">
+                    15 词
+                </button>
+                <button class="review-goal-option-btn p-3 rounded-2xl border-2 border-blue-500 bg-blue-50 text-blue-900 font-bold text-sm transition text-center active-goal cursor-pointer" data-goal="20">
+                    20 词
+                </button>
+                <button class="review-goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-blue-50 hover:border-blue-400 text-stone-800 font-bold text-sm transition text-center cursor-pointer" data-goal="30">
+                    30 词
+                </button>
+                <button class="review-goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-blue-50 hover:border-blue-400 text-stone-800 font-bold text-sm transition text-center cursor-pointer" data-goal="50">
+                    50 词
+                </button>
+                <button class="review-goal-option-btn p-3 rounded-2xl border border-stone-200 bg-stone-50 hover:bg-blue-50 hover:border-blue-400 text-stone-800 font-bold text-sm transition text-center cursor-pointer" data-goal="100">
+                    100 词
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+                <input id="customReviewGoalInput" type="number" min="5" max="200" placeholder="或输入自定义数量 (如: 40)" class="flex-1 px-3 py-2 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 font-mono">
+                <button id="btnSaveCustomReviewGoal" class="px-4 py-2 rounded-xl bg-stone-900 text-white font-semibold text-xs hover:bg-stone-800 transition cursor-pointer">
+                    确定
+                </button>
+            </div>
+            <div id="reviewLearnedCountNotice" class="text-2xs text-stone-400 mt-2 text-center">已累计学习 0 个单词</div>
+        </div>
+    </div>
+
+    <!-- Word Detail Modal (词库单词详情弹窗) -->
+    <div id="wordDetailModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 flex flex-col max-h-[90vh] overflow-y-auto">
+            <!-- Header Bar -->
+            <div class="flex items-center justify-between pb-3 border-b border-stone-100 sticky top-0 bg-white z-10">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button id="btnWordDetailBack" class="hidden p-1.5 rounded-lg hover:bg-stone-100 text-stone-500 cursor-pointer" title="返回上一个词条" aria-label="返回上一个词条">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <span id="modalWordDiffBadge" class="meta-chip meta-chip--green">初级</span>
+                    <span id="modalWordStatusBadge" class="meta-chip meta-chip--stone">未学习</span>
+                </div>
+                <button id="btnCloseWordDetailModal" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Main Word Display & Audio -->
+            <div class="my-4 p-5 rounded-2xl bg-amber-500/5 border border-amber-500/15 flex items-center justify-between">
+                <div class="flex-1 pr-3">
+                    <div id="modalWordVocalized" class="text-3xl sm:text-4xl font-serif font-bold text-stone-900 font-arabic text-right mb-1">...</div>
+                    <div id="modalWordMeaning" class="text-base font-bold text-stone-800 text-left">...</div>
+                </div>
+                <button id="btnModalPlayAudio" class="p-3 rounded-2xl bg-amber-500 text-white hover:bg-amber-600 active:scale-95 transition shadow-sm cursor-pointer shrink-0" title="朗读单词">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                </button>
+            </div>
+
+            <!-- Linguistic Badges (词性 / 复数) -->
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div class="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex flex-col items-center text-center">
+                    <span class="text-2xs text-stone-400">词性分类</span>
+                    <span id="modalWordPos" class="text-xs font-bold text-stone-800 mt-0.5">—</span>
+                </div>
+                <div id="modalWordPluralCard" class="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex flex-col items-center text-center">
+                    <span class="text-2xs text-stone-400">复数 (جمع)</span>
+                    <span id="modalWordPlural" class="text-sm font-bold text-stone-900 font-arabic mt-0.5">—</span>
+                </div>
+            </div>
+
+            <!-- Noun lexicon in detail modal -->
+            <section id="modalNounLexiconSection" class="hidden mb-4 flex flex-col gap-3 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/80 via-white to-stone-50 border border-amber-200/70">
+                <div class="flex items-center justify-between gap-2"><div class="flex items-center gap-2"><span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-sm font-bold">ج</span><div><div class="text-xs font-bold text-stone-800">字母根</div><div class="text-2xs text-stone-400">الجذر · 构词核心</div></div></div><span id="modalNounRootText" class="font-arabic text-lg font-bold text-amber-900 tracking-widest" dir="rtl">—</span></div>
+                <div class="pt-2 border-t border-amber-200/50"><div class="flex items-center justify-between gap-2 mb-1.5"><span class="text-xs font-bold text-stone-800">同根派生词</span><span class="text-2xs text-stone-400">点击查看词条 · 🔊 发音</span></div><div id="modalNounDerivativesList" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5"></div></div>
+            </section>
+
+            <!-- Example Sentence Section -->
+            <div class="mb-4 p-4 rounded-2xl bg-stone-50 border border-stone-200/80">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="modalExampleLabel" class="text-xs font-bold text-stone-700">📖 语境例句与翻译</span>
+                    <button id="btnModalPlaySentence" class="px-2 py-0.5 text-2xs bg-stone-200 hover:bg-stone-300 rounded-lg text-stone-700 transition flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                        <span>朗读</span>
+                    </button>
+                </div>
+                <p id="modalExampleAr" class="text-base font-serif text-stone-900 font-arabic text-right leading-loose mb-1.5" dir="rtl">...</p>
+                <p id="modalExampleZh" class="text-xs text-stone-600 text-left">...</p>
+                <details id="modalOriginalExample" class="hidden mt-2 pt-2 border-t border-dashed border-stone-200/80">
+                    <summary class="cursor-pointer select-none text-xs font-semibold text-stone-400">查看原例句</summary>
+                    <p id="modalOriginalExampleAr" class="text-sm font-serif text-stone-800 font-arabic text-right leading-loose mt-1.5" dir="rtl"></p>
+                    <p id="modalOriginalExampleZh" class="text-xs text-stone-500 leading-relaxed mt-1"></p>
+                    <button id="btnModalPlayOriginal" class="mt-2 px-2 py-0.5 text-xs bg-white border border-stone-200 hover:bg-stone-100 rounded-lg text-stone-600 transition cursor-pointer">朗读原句</button>
+                </details>
+            </div>
+
+            <!-- Modal Synonyms & Antonyms Section -->
+            <div id="modalSynonymsAntonymsSection" class="mb-4 flex flex-col gap-2 p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/70 to-orange-50/40 border border-amber-200/70 shadow-2xs hidden">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-bold text-amber-900 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        <span>近义词与反义词</span>
+                    </span>
+                    <span class="text-xs text-amber-700/60">轻触查看释义</span>
+                </div>
+                <div id="modalSynonymsBox" dir="rtl" class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="px-2.5 py-1 rounded-lg bg-amber-100/90 text-amber-900 font-bold text-xs shrink-0">近义词</span>
+                    <div id="modalSynonymsList" class="flex flex-wrap items-center gap-2 font-arabic font-bold text-stone-900"></div>
+                </div>
+                <div id="modalAntonymsBox" dir="rtl" class="flex flex-wrap items-center gap-2 text-sm pt-2 border-t border-amber-200/50 hidden">
+                    <span class="px-2.5 py-1 rounded-lg bg-stone-200/90 text-stone-800 font-bold text-xs shrink-0">反义词</span>
+                    <div id="modalAntonymsList" class="flex flex-wrap items-center gap-2 font-arabic font-bold text-stone-900"></div>
+                </div>
+            </div>
+
+            <!-- Modal Verb Tenses Summary Section (Visible for verbs) -->
+            <div id="modalVerbTensesSection" class="mb-4 p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200/70 hidden flex flex-col gap-2.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="text-xs font-bold text-emerald-950 whitespace-nowrap">动词核心时态</span>
+                        <span id="modalVerbFormTag" class="text-3xs px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-medium whitespace-nowrap shrink-0">III 型</span>
+                    </div>
+                    <button id="btnModalOpenConjugationModal" class="shrink-0 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-2xs whitespace-nowrap transition flex items-center gap-0.5 cursor-pointer">
+                        <span>全人称变位</span>
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+                
+                <!-- 3-tense row -->
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div id="modalVerbPastCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                        <span class="text-3xs text-stone-400 whitespace-nowrap">过去时 (الماضي)</span>
+                        <span id="modalVerbPastText" class="text-sm font-bold font-arabic text-stone-900">بَادَرَ</span>
+                    </div>
+                    <div id="modalVerbPresentCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                        <span class="text-3xs text-stone-400 whitespace-nowrap">现在时 (المضارع)</span>
+                        <span id="modalVerbPresentText" class="text-sm font-bold font-arabic text-stone-900">يُبَادِرُ</span>
+                    </div>
+                    <div id="modalVerbImperativeCard" class="p-2 rounded-xl bg-white border border-emerald-200/80 flex flex-col items-center gap-0.5 cursor-pointer hover:border-emerald-400 transition">
+                        <span class="text-3xs text-stone-400 whitespace-nowrap">命令式 (الأمر)</span>
+                        <span id="modalVerbImperativeText" class="text-sm font-bold font-arabic text-stone-900">بَادِرْ</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons in modal -->
+            <div class="mt-4 pt-3 border-t border-stone-100 flex items-center justify-end gap-2">
+                <button id="btnModalToggleMastered" class="px-4 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs transition cursor-pointer flex items-center gap-1.5">
+                    <span>✨ 标为已熟记</span>
+                </button>
+                <button id="btnModalCloseAction" class="px-5 py-2 rounded-xl bg-stone-900 text-white font-bold text-xs hover:bg-stone-800 transition cursor-pointer">
+                    关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Person Verb Conjugation Popover Modal -->
+    <div id="verbConjugationModal" class="hidden fixed inset-0 z-50 bg-stone-950/75 backdrop-blur-sm items-center justify-center p-3 sm:p-4">
+        <div class="w-full max-w-md bg-stone-900 text-stone-100 rounded-3xl p-5 sm:p-6 shadow-2xl border border-stone-700/80 flex flex-col max-h-[88vh] overflow-hidden transform transition-all">
+            <!-- Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-stone-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl font-bold font-arabic text-white" id="modalConjugationVerbName">بَادَرَ</span>
+                    <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-medium" id="modalConjugationFormTag">III 型 (فَاعَلَ)</span>
+                </div>
+                <button id="btnCloseConjugationModal" class="p-1.5 rounded-xl hover:bg-stone-800 text-stone-400 hover:text-white transition cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Tense Selector Tabs -->
+            <div class="grid grid-cols-3 gap-1.5 my-3 p-1 rounded-2xl bg-stone-800/90 border border-stone-700/60">
+                <button id="tabConjugationPresent" class="py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer bg-emerald-600 text-white shadow-sm">
+                    <span>现在式</span>
+                </button>
+                <button id="tabConjugationPast" class="py-2 px-2 rounded-xl text-xs font-bold text-stone-400 hover:text-white transition flex items-center justify-center gap-1 cursor-pointer">
+                    <span>过去式</span>
+                </button>
+                <button id="tabConjugationImperative" class="py-2 px-2 rounded-xl text-xs font-bold text-stone-400 hover:text-white transition flex items-center justify-center gap-1 cursor-pointer">
+                    <span>命令式</span>
+                </button>
+            </div>
+
+            <!-- Conjugation Grid (Scrollable) -->
+            <div id="conjugationCardsContainer" class="flex-1 overflow-y-auto pr-1 grid grid-cols-2 gap-2 py-1">
+                <!-- Dynamically populated conjugation cards -->
+            </div>
+
+            <!-- Footer info -->
+            <div class="mt-3 pt-2.5 border-t border-stone-800/80 flex items-center justify-between text-2xs text-stone-400">
+                <span>🔊 点击卡片或小喇叭可试听发音</span>
+                <button id="btnCloseConjugationBottom" class="px-4 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-white font-semibold transition cursor-pointer">
+                    完成
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs items-center justify-center p-4">
+        <div class="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 flex flex-col max-h-[88vh] overflow-y-auto">
+            <div class="flex items-center justify-between pb-3 border-b border-stone-100">
+                <h3 class="font-bold text-stone-900 text-lg">账户与学习设置</h3>
+                <button id="btnCloseSettings" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400 cursor-pointer">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Current User Account & Self-Service Card -->
+            <div class="mt-3 p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/70 flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-full bg-amber-100 text-amber-900 font-bold text-base flex items-center justify-center border border-amber-200 shrink-0">
+                        <span id="accountInitialBadge">K</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <span id="currentAccountBadge" class="text-sm font-bold text-stone-900 truncate max-w-[150px]">学习者</span>
+                            <span id="currentRoleBadge" class="px-1.5 py-0.5 rounded-md text-3xs font-semibold bg-emerald-100 text-emerald-800 shrink-0">独立账户</span>
+                        </div>
+                        <div id="currentEmailBadge" class="text-2xs text-stone-500 truncate mt-0.5">云端进度自动同步中</div>
+                    </div>
+                    <button id="btnLogout" class="shrink-0 px-2.5 py-1.5 rounded-xl bg-white text-stone-600 hover:bg-rose-50 hover:text-rose-700 border border-stone-200 hover:border-rose-200 transition text-2xs font-semibold flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        <span>退出</span>
+                    </button>
+                </div>
+
+                <!-- Self-Service Quick Actions -->
+                <div class="flex flex-wrap gap-2 pt-3 border-t border-amber-200/60">
+                    <button id="btnToggleEditNickname" type="button" class="flex-1 basis-[calc(50%-0.25rem)] flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-stone-200 hover:border-amber-300 hover:bg-amber-50/70 text-xs font-semibold text-stone-700 transition whitespace-nowrap cursor-pointer">
+                        <span>✏️</span><span>修改昵称</span>
+                    </button>
+                    <button id="btnToggleChangePassword" type="button" class="flex-1 basis-[calc(50%-0.25rem)] flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-stone-200 hover:border-amber-300 hover:bg-amber-50/70 text-xs font-semibold text-stone-700 transition whitespace-nowrap cursor-pointer">
+                        <span>🔑</span><span>修改密码</span>
+                    </button>
+                    <button id="btnChangeAvatar" type="button" class="flex-1 basis-[calc(50%-0.25rem)] flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-stone-200 hover:border-amber-300 hover:bg-amber-50/70 text-xs font-semibold text-stone-700 transition whitespace-nowrap cursor-pointer">
+                        <span>🖼️</span><span>更换头像</span>
+                    </button>
+                    <button id="btnToggleFeedback" type="button" class="flex-1 basis-[calc(50%-0.25rem)] flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white border border-stone-200 hover:border-amber-300 hover:bg-amber-50/70 text-xs font-semibold text-stone-700 transition whitespace-nowrap cursor-pointer">
+                        <span>💬</span><span>用户反馈</span>
+                    </button>
+                    <input id="avatarFileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+                    <button id="btnOpenAdminOverview" type="button" class="hidden flex-1 basis-[calc(50%-0.25rem)] flex items-center justify-center gap-1.5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-xs font-bold text-amber-300 transition whitespace-nowrap cursor-pointer">
+                        <span>📊</span><span>数据概览</span>
+                    </button>
+                </div>
+
+                <!-- Inline Edit Nickname Panel -->
+                <div id="editNicknamePanel" class="hidden pt-2 border-t border-amber-200/50 flex items-center gap-2">
+                    <input id="inputNewNickname" type="text" maxlength="24" placeholder="输入新昵称 (2-24字符)"
+                        class="flex-1 px-3 py-1.5 text-xs bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500">
+                    <button id="btnSaveNickname" type="button" class="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer shrink-0">
+                        保存
+                    </button>
+                </div>
+
+                <!-- Inline Change Password Panel -->
+                <div id="changePasswordPanel" class="hidden pt-2 border-t border-amber-200/50 flex flex-col gap-2">
+                    <input id="inputCurrentPassword" type="password" placeholder="当前登录密码"
+                        class="w-full px-3 py-1.5 text-xs bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500">
+                    <div class="flex items-center gap-2">
+                        <input id="inputChangedPassword" type="password" minlength="6" placeholder="新密码 (至少 6 位)"
+                            class="flex-1 px-3 py-1.5 text-xs bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500">
+                        <button id="btnSaveChangedPassword" type="button" class="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer shrink-0">
+                            确认改密
+                        </button>
+                    </div>
+                </div>
+                <!-- Inline Feedback Panel -->
+                <div id="feedbackPanel" class="hidden pt-2 border-t border-amber-200/50 flex flex-col gap-2">
+                    <textarea id="inputFeedback" rows="3" maxlength="500"
+                        placeholder="使用中遇到的问题、想要的功能、词条纠错，都可以写在这里（500 字以内）"
+                        class="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-amber-500 resize-none leading-relaxed"></textarea>
+                    <div class="flex items-center justify-between gap-2">
+                        <span id="feedbackCounter" class="text-3xs text-stone-400">0 / 500</span>
+                        <button id="btnSubmitFeedback" type="button" class="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold cursor-pointer shrink-0">
+                            提交反馈
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-3 flex flex-col gap-2">
+                <label class="text-xs font-semibold text-stone-700">每日新词学习目标 (云端跟随账户保存)</label>
+                <select id="settingsDailyGoalSelect" class="w-full p-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none font-medium">
+                    <option value="10">10 词 / 天 (轻松习惯)</option>
+                    <option value="15">15 词 / 天 (每日精进)</option>
+                    <option value="20" selected>20 词 / 天 (推荐标准)</option>
+                    <option value="25">25 词 / 天 (高效进阶)</option>
+                    <option value="30">30 词 / 天 (深度学习)</option>
+                    <option value="50">50 词 / 天 (极速冲刺)</option>
+                    <option value="100">100 词 / 天 (极客狂背)</option>
+                </select>
+            </div>
+
+            <div class="my-2 flex flex-col gap-2">
+                <label class="text-xs font-semibold text-stone-700">单次微循环批次 (Session Batch Size)</label>
+                <select id="sessionSizeSelect" class="w-full p-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:outline-none">
+                    <option value="10">10 词 / 批次</option>
+                    <option value="15">15 词 / 批次</option>
+                    <option value="20" selected>20 词 / 批次</option>
+                    <option value="30">30 词 / 批次</option>
+                    <option value="50">50 词 / 批次</option>
+                </select>
+            </div>
+
+            <div class="my-2 p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-bold text-stone-700">快捷键</span>
+                    <span class="text-3xs text-stone-400">桌面端</span>
+                </div>
+                <div class="flex flex-col divide-y divide-stone-200/70">
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <span class="flex items-center gap-1 shrink-0">
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">1</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">2</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">3</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">4</kbd>
+                        </span>
+                        <span class="text-2xs text-stone-600">单选选项</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-2 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">Enter</kbd>
+                        <span class="text-2xs text-stone-600">确认 / 展开 / 下一题</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <span class="flex items-center gap-1 shrink-0">
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-2 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">Space</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">J</kbd>
+                        </span>
+                        <span class="text-2xs text-stone-600">标记「不认识」</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <span class="flex items-center gap-1 shrink-0">
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">M</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">0</kbd>
+                        </span>
+                        <span class="text-2xs text-stone-600">标记已熟记</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <span class="flex items-center gap-1 shrink-0">
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">A</kbd>
+                            <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">S</kbd>
+                        </span>
+                        <span class="text-2xs text-stone-600">单词 / 例句发音</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 py-1.5">
+                        <kbd class="inline-flex items-center justify-center min-w-[1.35rem] px-1 py-0.5 bg-white border border-stone-200 rounded-md text-3xs font-mono text-stone-700">T</kbd>
+                        <span class="text-2xs text-stone-600">显示 / 隐藏标音</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Progress -->
+            <div class="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between">
+                <div>
+                    <div class="text-xs font-medium text-rose-700">重置当前账号复习进度</div>
+                    <div class="text-2xs text-stone-400">仅重置本账号待背状态，不影响其他账号与历史记录</div>
+                </div>
+                <button id="btnResetProgress" class="px-3 py-1.5 text-xs rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition font-medium cursor-pointer shrink-0">
+                    重置进度
+                </button>
+            </div>
+
+            <!-- Legal documents entry (always available) -->
+            <div class="mt-3 pt-3 border-t border-stone-100 flex items-center justify-center gap-2 text-2xs text-stone-500">
+                <button type="button" onclick="openLegalModal('terms')" class="hover:text-amber-700 hover:underline cursor-pointer">《用户服务协议》</button>
+                <span class="text-stone-300">·</span>
+                <button type="button" onclick="openLegalModal('privacy')" class="hover:text-amber-700 hover:underline cursor-pointer">《隐私政策》</button>
+                <span class="text-stone-300">·</span>
+                <span>v1.0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legal Document Modal (in-page reading, keeps form state) -->
+    <div id="legalModal" class="hidden fixed inset-0 z-[70] bg-stone-900/55 backdrop-blur-sm items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-stone-200 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-stone-100 shrink-0">
+                <h3 id="legalModalTitle" class="font-bold text-stone-900 text-base">用户服务协议</h3>
+                <button type="button" onclick="closeLegalModal()" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400 cursor-pointer" aria-label="关闭">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="legalModalBody" class="px-5 py-4 overflow-y-auto overscroll-contain text-sm">
+                <div class="text-xs text-stone-400 py-8 text-center">正在加载…</div>
+            </div>
+            <div class="px-5 py-3 border-t border-stone-100 shrink-0">
+                <button type="button" onclick="closeLegalModal()" class="w-full py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold transition cursor-pointer">我已阅读</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin User Retention Overview Modal (仅 ADMIN_EMAILS 管理员可见) -->
+    <div id="adminOverviewModal" class="hidden fixed inset-0 z-50 bg-stone-900/55 backdrop-blur-xs items-center justify-center p-3 sm:p-5">
+        <div class="w-full max-w-3xl bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-stone-200 flex flex-col max-h-[88vh] overflow-hidden">
+            <div class="flex items-start justify-between gap-2 pb-3 border-b border-stone-100">
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-stone-900 text-sm sm:text-lg flex items-center gap-2">
+                        <span class="truncate">📊 用户与留存概览</span>
+                        <span class="hidden sm:inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-2xs font-bold shrink-0">管理员</span>
+                    </h3>
+                    <p class="text-2xs text-stone-400 mt-0.5 truncate">实时读取 Cloudflare D1 中的账户与学习数据</p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button id="btnRefreshAdminOverview" type="button" class="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-xs font-semibold text-stone-700 cursor-pointer transition whitespace-nowrap">
+                        刷新
+                    </button>
+                    <button id="btnCloseAdminOverview" type="button" class="p-1.5 rounded-xl hover:bg-stone-100 text-stone-400 cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Admin Tabs -->
+            <div class="mt-3 flex items-center gap-1 p-1 rounded-xl bg-stone-100">
+                <button id="tabAdminUsers" type="button" class="flex-1 py-1.5 rounded-lg bg-white text-xs font-bold text-stone-900 transition cursor-pointer">用户列表</button>
+                <button id="tabAdminFeedback" type="button" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-stone-500 hover:text-stone-800 transition cursor-pointer flex items-center justify-center gap-1">
+                    <span>用户反馈</span>
+                    <span id="adminFeedbackBadge" class="hidden px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-3xs font-bold">0</span>
+                </button>
+            </div>
+
+            <div id="adminUsersPane" class="flex-1 flex flex-col min-h-0">
+            <!-- Summary KPIs -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-3.5">
+                <div class="p-3 rounded-2xl bg-stone-50 border border-stone-200/80">
+                    <div class="text-2xs text-stone-500">注册用户总数</div>
+                    <div id="adminStatUsers" class="text-xl font-extrabold text-stone-900 font-mono mt-0.5">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/70">
+                    <div class="text-2xs text-emerald-800">今日活跃账户</div>
+                    <div id="adminStatActiveToday" class="text-xl font-extrabold text-emerald-700 font-mono mt-0.5">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-amber-50/60 border border-amber-200/70">
+                    <div class="text-2xs text-amber-900">留存单词进度条数</div>
+                    <div id="adminStatProgress" class="text-xl font-extrabold text-amber-700 font-mono mt-0.5">0</div>
+                </div>
+                <div class="p-3 rounded-2xl bg-blue-50/60 border border-blue-200/70">
+                    <div class="text-2xs text-blue-900">累计完成背词批次</div>
+                    <div id="adminStatSessions" class="text-xl font-extrabold text-blue-700 font-mono mt-0.5">0</div>
+                </div>
+            </div>
+
+            <!-- User List Container -->
+            <div id="adminUsersListContainer" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
+                <div class="text-center py-10 text-xs text-stone-400">正在加载后台用户数据...</div>
+            </div>
+            </div>
+
+            <div id="adminFeedbackPane" class="hidden flex-1 flex flex-col min-h-0">
+                <div id="adminFeedbackListContainer" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 pt-3">
+                    <div class="text-center py-10 text-xs text-stone-400">正在加载用户反馈...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Word Peek Popover (synonym / antonym meanings) -->
+    <div id="wordPeekPopover" class="hidden fixed z-[60] w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200 shadow-2xl p-3.5" role="dialog" aria-label="词汇释义">
+        <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="min-w-0">
+                <p class="text-xs font-bold text-stone-500">词义速查</p>
+                <p id="wordPeekQuery" class="text-xs text-stone-400 truncate" dir="rtl"></p>
+            </div>
+            <button id="wordPeekClose" class="p-1 rounded-lg hover:bg-stone-100 text-stone-400 cursor-pointer shrink-0" title="关闭" aria-label="关闭">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div id="wordPeekLoading" class="hidden text-xs text-stone-400 py-3 text-center">查询中…</div>
+        <div id="wordPeekResults" class="flex flex-col gap-1.5 max-h-72 overflow-y-auto overscroll-contain"></div>
+        <div id="wordPeekEmpty" class="hidden text-xs text-stone-400 py-3 text-center">词库与补充词典均未收录</div>
+        <div id="wordPeekError" class="hidden text-xs text-rose-500 py-3 text-center">查询失败，请重试</div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+        <div class="px-4 py-2 rounded-full bg-stone-900/90 text-white text-xs font-medium backdrop-blur-md shadow-lg flex items-center gap-2">
+            <span id="toastMessage">操作成功</span>
+        </div>
+    </div>
+
+    <!-- App JavaScript Controller with Cache Buster -->
+    <script src="/js/app.js?v=6.3.2"></script>
+</body>
+</html>

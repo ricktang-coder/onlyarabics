@@ -1,0 +1,25 @@
+{
+  "name": "onlyarabics",
+  "version": "4.0.0",
+  "description": "OnlyArabics · 只有阿语：纯净的阿拉伯语背单词网站（Cloudflare Workers + D1 + Hono）",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run css:build && wrangler deploy",
+    "build": "tsc --noEmit",
+    "css:build": "tailwindcss -i ./src/tailwind.css -o ./public/css/tailwind.css --minify",
+    "db:init": "wrangler d1 execute onlyarabics-db --local --file=d1/schema.sql",
+    "db:seed": "wrangler d1 execute onlyarabics-db --local --file=d1/sample_seed.sql"
+  },
+  "dependencies": {
+    "@clerk/backend": "^1.15.0",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "tailwindcss": "3.4.17",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.84.0"
+  },
+  "license": "AGPL-3.0-only"
+}

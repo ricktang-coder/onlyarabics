@@ -1,0 +1,23 @@
+name = "onlyarabics"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 静态前端资源目录
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# Cloudflare D1 数据库：先运行 `npx wrangler d1 create onlyarabics-db`，把输出的 database_id 填到这里
+[[d1_databases]]
+binding = "DB"
+database_name = "onlyarabics-db"
+database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+
+# 机密密钥通过 `wrangler secret put` 配置（本地开发写在 .dev.vars），不要写入本文件：
+# - JWT_SECRET: 会话签名与验证码 HMAC 密钥（必需）
+# - RESEND_API_KEY: Resend 邮件发送 API 密钥（生产环境发信必需；本地开发不配置时验证码打印在终端）
+[vars]
+ENVIRONMENT = "development"
+EMAIL_FROM = "OnlyArabics <noreply@example.com>"
+ADMIN_EMAILS = ""
